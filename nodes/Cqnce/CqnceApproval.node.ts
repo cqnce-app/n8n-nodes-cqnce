@@ -44,7 +44,10 @@ export class CqnceApproval implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'cQnce Approval',
 		name: 'cqnceApproval',
-		icon: 'file:cqnce.svg',
+		icon: {
+			light: 'file:cqnce.light.svg',
+			dark: 'file:cqnce.dark.svg',
+		},
 		group: ['transform'],
 		version: 1,
 		description: 'Wait for a cQnce decision and route the item to Approved or Rejected',

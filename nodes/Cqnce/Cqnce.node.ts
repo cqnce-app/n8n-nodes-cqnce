@@ -31,7 +31,10 @@ export class Cqnce implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'cQnce',
 		name: 'cqnce',
-		icon: 'file:cqnce.svg',
+		icon: {
+			light: 'file:cqnce.light.svg',
+			dark: 'file:cqnce.dark.svg',
+		},
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] === "sendAndWait" ? "Human authorization" : ""}}',
