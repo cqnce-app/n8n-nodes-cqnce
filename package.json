@@ -1,0 +1,67 @@
+{
+  "name": "n8n-nodes-cqnce",
+  "version": "0.1.0",
+  "description": "n8n community node for cQnce human-in-the-loop authorization",
+  "author": {
+    "name": "cQnce"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/cqnce-app/n8n-nodes-cqnce#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cqnce-app/n8n-nodes-cqnce.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cqnce-app/n8n-nodes-cqnce/issues"
+  },
+  "main": "dist/nodes/Cqnce/Cqnce.node.js",
+  "scripts": {
+    "build": "n8n-node build",
+    "dev": "n8n-node dev",
+    "lint": "n8n-node lint",
+    "lint:fix": "n8n-node lint --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run lint && npm test && npm run build"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "strict": false,
+    "credentials": [
+      "dist/credentials/CqnceApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Cqnce/Cqnce.node.js",
+      "dist/nodes/Cqnce/CqnceApproval.node.js"
+    ]
+  },
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "cqnce",
+    "human-in-the-loop",
+    "approval",
+    "authorization",
+    "ai-agent"
+  ],
+  "engines": {
+    "node": ">=20.15"
+  },
+  "dependencies": {
+    "@cqnce/sdk": "^0.1.2"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "devDependencies": {
+    "@n8n/node-cli": "^0.25.0",
+    "@types/node": "^24.10.0",
+    "eslint": "^9.39.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

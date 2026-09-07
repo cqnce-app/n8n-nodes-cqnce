@@ -1,0 +1,5 @@
+nodes/**/*.test.ts
+nodes/**/*.spec.ts
+coverage/
+.github/
+.vscode/
