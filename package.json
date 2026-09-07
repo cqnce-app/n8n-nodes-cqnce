@@ -1,5 +1,5 @@
 {
-  "name": "n8n-nodes-cqnce",
+  "name": "@cqnce/n8n-nodes-cqnce",
   "version": "0.1.0",
   "description": "n8n community node for cQnce human-in-the-loop authorization",
   "author": {

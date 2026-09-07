@@ -1,4 +1,4 @@
-# n8n-nodes-cqnce
+# @cqnce/n8n-nodes-cqnce
 
 An [n8n](https://n8n.io/) community node for human-in-the-loop authorization with
 [cQnce](https://cqnce.app/).
@@ -24,11 +24,11 @@ also available when cQnce cannot reach the n8n instance.
 
 ## Installation
 
-Install `n8n-nodes-cqnce` from **Settings → Community Nodes** in n8n, or install it in a self-hosted
+Install `@cqnce/n8n-nodes-cqnce` from **Settings → Community Nodes** in n8n, or install it in a self-hosted
 n8n installation:
 
 ```bash
-npm install n8n-nodes-cqnce
+npm install @cqnce/n8n-nodes-cqnce
 ```
 
 Restart n8n after installation.
@@ -106,7 +106,7 @@ The GitHub Actions workflow publishes the package when a GitHub Release is publi
 first release:
 
 1. Create an npm automation or granular access token with permission to publish
-   `n8n-nodes-cqnce`.
+   `@cqnce/n8n-nodes-cqnce` under the `@cqnce` scope.
 2. Add it to the GitHub repository as an Actions secret named `NPM_TOKEN`.
 3. Create the `npm` environment in GitHub if you want environment protection or manual approval.
 4. Commit the desired version in `package.json` and create a release whose tag is exactly that
