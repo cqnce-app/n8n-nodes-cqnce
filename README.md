@@ -3,7 +3,7 @@
 An [n8n](https://n8n.io/) community node for human-in-the-loop authorization with
 [cQnce](https://cqnce.app/).
 
-The node sends an authorization request through the official `@cqnce/sdk`, pauses the n8n
+The node sends an authorization request through n8n's native HTTP client, pauses the n8n
 execution, and supplies n8n's signed resume URL as the request callback. When cQnce reports a
 terminal decision, the execution resumes with the HITL response expected by n8n. A polling mode is
 also available when cQnce cannot reach the n8n instance.
@@ -12,7 +12,7 @@ also available when cQnce cannot reach the n8n instance.
 
 - Appears as **cQnce** in n8n's **Human review** action picker on n8n versions that support
   generated HITL tools.
-- Uses the official cQnce TypeScript SDK.
+- Uses n8n's native HTTP client and has no runtime dependencies.
 - Supports project routing rules, explicit routing modes, metadata, and attachments.
 - Treats `APPROVED` as approval and `REJECTED`, `EXPIRED`, or `CANCELLED` as denial.
 - Acknowledges intermediate `CHAIN` callbacks without resuming the workflow.
@@ -32,10 +32,6 @@ npm install n8n-nodes-cqnce
 ```
 
 Restart n8n after installation.
-
-Because this package deliberately depends on the official `@cqnce/sdk`, it is intended for
-self-hosted n8n installations. The n8n Cloud verification rules currently reject community-node
-packages with runtime dependencies.
 
 ## Credentials
 
@@ -74,7 +70,7 @@ worker. The n8n instance must expose its signed waiting-webhook URL to cQnce.
 ### Polling
 
 Polling needs only outbound HTTPS access from n8n to cQnce. The node omits `callbackUrl`, submits the
-request, and polls its status through `@cqnce/sdk` until it becomes terminal. Configure the interval
+request, and polls its status through n8n's native HTTP client until it becomes terminal. Configure the interval
 and timeout in the node.
 
 Polling keeps the n8n execution and its worker active. Use it for relatively short human-review

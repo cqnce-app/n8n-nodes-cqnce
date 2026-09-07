@@ -50,14 +50,8 @@ describe('cQnce node', () => {
 		});
 	});
 
-	it('submits through the SDK with the signed n8n resume URL and then waits', async () => {
-		const fetchMock = vi.fn().mockResolvedValue(
-			new Response(JSON.stringify({ requestId: 'req-sdk-1' }), {
-				status: 200,
-				headers: { 'Content-Type': 'application/json' },
-			}),
-		);
-		vi.stubGlobal('fetch', fetchMock);
+	it('submits through n8n HTTP with the signed resume URL and then waits', async () => {
+		const httpRequestMock = vi.fn().mockResolvedValue({ requestId: 'req-http-1' });
 		const waitMock = vi.fn().mockResolvedValue(undefined);
 		const parameters: Record<string, unknown> = {
 			message: 'Deploy release 42',
@@ -81,6 +75,8 @@ describe('cQnce node', () => {
 			getNodeParameter: (name: string) => parameters[name],
 			getWorkflow: () => ({ id: 'workflow-1', name: 'Release workflow' }),
 			getExecutionId: () => 'execution-1',
+			getExecutionCancelSignal: () => undefined,
+			helpers: { httpRequest: httpRequestMock },
 			getSignedResumeUrl: () => 'https://n8n.example/webhook-waiting/node?signature=signed',
 			putExecutionToWait: waitMock,
 			getNode: () => ({ name: 'cQnce', type: 'cqnce', typeVersion: 1, position: [0, 0] }),
@@ -88,12 +84,12 @@ describe('cQnce node', () => {
 
 		const result = await new Cqnce().execute.call(context);
 
-		expect(fetchMock).toHaveBeenCalledOnce();
-		const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
-		const requestBody = JSON.parse(String(init.body)) as Record<string, unknown>;
-		expect(url.toString()).toBe('https://api.cqnce.app/v1/requests');
-		expect(init.headers).toEqual(expect.any(Headers));
-		expect((init.headers as Headers).get('x-api-key')).toBe('project-key');
+		expect(httpRequestMock).toHaveBeenCalledOnce();
+		const requestOptions = httpRequestMock.mock.calls[0][0] as Record<string, unknown>;
+		const requestBody = requestOptions.body as Record<string, unknown>;
+		expect(requestOptions.url).toBe('https://api.cqnce.app/v1/requests');
+		expect(requestOptions.method).toBe('POST');
+		expect(requestOptions.headers).toMatchObject({ 'x-api-key': 'project-key' });
 		expect(requestBody).toMatchObject({
 			callbackUrl: 'https://n8n.example/webhook-waiting/node?signature=signed',
 			routingMode: 'SERIAL',
@@ -102,26 +98,14 @@ describe('cQnce node', () => {
 			payload: { action: 'Deploy', target: 'production', input: { version: 42 } },
 		});
 		expect(waitMock).toHaveBeenCalledOnce();
-		expect(result[0][0].json.cqnce).toEqual({ requestId: 'req-sdk-1', status: 'PENDING' });
+		expect(result[0][0].json.cqnce).toEqual({ requestId: 'req-http-1', status: 'PENDING' });
 	});
 
 	it('polls cQnce without creating an inbound callback URL', async () => {
-		const fetchMock = vi
+		const httpRequestMock = vi
 			.fn()
-			.mockResolvedValueOnce(
-				new Response(JSON.stringify({ requestId: 'req-poll-1' }), { status: 200 }),
-			)
-			.mockResolvedValueOnce(
-				new Response(
-					JSON.stringify({
-						requestId: 'req-poll-1',
-						status: 'APPROVED',
-						responses: [],
-					}),
-					{ status: 200 },
-				),
-			);
-		vi.stubGlobal('fetch', fetchMock);
+			.mockResolvedValueOnce({ requestId: 'req-poll-1' })
+			.mockResolvedValueOnce({ requestId: 'req-poll-1', status: 'APPROVED', responses: [] });
 		const resumeUrlMock = vi.fn(() => {
 			throw new Error('Polling must not request a resume URL');
 		});
@@ -149,6 +133,8 @@ describe('cQnce node', () => {
 			getNodeParameter: (name: string) => parameters[name],
 			getWorkflow: () => ({ id: 'workflow-1', name: 'Private deployment' }),
 			getExecutionId: () => 'execution-2',
+			getExecutionCancelSignal: () => undefined,
+			helpers: { httpRequest: httpRequestMock },
 			getSignedResumeUrl: resumeUrlMock,
 			putExecutionToWait: waitMock,
 			getNode: () => ({ name: 'cQnce', type: 'cqnce', typeVersion: 1, position: [0, 0] }),
@@ -156,9 +142,9 @@ describe('cQnce node', () => {
 
 		const result = await new Cqnce().execute.call(context);
 
-		expect(fetchMock).toHaveBeenCalledTimes(2);
-		const [, submitInit] = fetchMock.mock.calls[0] as [URL, RequestInit];
-		const requestBody = JSON.parse(String(submitInit.body)) as Record<string, unknown>;
+		expect(httpRequestMock).toHaveBeenCalledTimes(2);
+		const submitOptions = httpRequestMock.mock.calls[0][0] as Record<string, unknown>;
+		const requestBody = submitOptions.body as Record<string, unknown>;
 		expect(requestBody).not.toHaveProperty('callbackUrl');
 		expect(requestBody).not.toHaveProperty('callbackMaxRetries');
 		expect(resumeUrlMock).not.toHaveBeenCalled();

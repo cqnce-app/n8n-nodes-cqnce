@@ -1,4 +1,3 @@
-import type { RoutingMode, SubmitRequestInput } from '@cqnce/sdk';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,6 +8,14 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
+import {
+	getRequest,
+	pollUntilResolved,
+	type RoutingMode,
+	submitRequest,
+	type SubmitRequestInput,
+} from './transport.js';
 
 import {
 	type CqnceCallbackBody,
@@ -172,12 +179,8 @@ export class CqnceApproval implements INodeType {
 		}
 
 		try {
-			const { CqnceClient } = await import('@cqnce/sdk');
 			const credentials = await this.getCredentials('cqnceApi');
-			const client = new CqnceClient({
-				baseUrl: String(credentials.baseUrl),
-				projectApiKey: String(credentials.projectApiKey),
-			});
+			const abortSignal = this.getExecutionCancelSignal();
 			const deliveryMode = this.getNodeParameter('deliveryMode', 0) as 'callback' | 'polling';
 			const routingMode = this.getNodeParameter('routingMode', 0) as RoutingMode | '';
 			const routingRuleId = (this.getNodeParameter('routingRuleId', 0) as string).trim();
@@ -210,15 +213,16 @@ export class CqnceApproval implements INodeType {
 				request.callbackMaxRetries = this.getNodeParameter('callbackMaxRetries', 0) as number;
 			}
 
-			const requestId = await client.submitRequestAndGetId(request);
+			const requestId = await submitRequest(this, credentials, request, abortSignal);
 			if (deliveryMode === 'callback') {
 				await this.putExecutionToWait(WAIT_INDEFINITELY);
 				return [[{ json: { ...items[0].json, cqnce: { requestId, status: 'PENDING' } } }], []];
 			}
 
-			const finalResult = await client.pollUntilResolved(requestId, () => {}, {
+			const finalResult = await pollUntilResolved(this, credentials, requestId, {
 				intervalMs: (this.getNodeParameter('pollingIntervalSeconds', 0) as number) * 1_000,
 				timeoutMs: (this.getNodeParameter('pollingTimeoutMinutes', 0) as number) * 60_000,
+				abortSignal,
 			});
 			const decision = toDecision({ requestId, ...finalResult } as CqnceCallbackBody);
 			return routeDecision(items[0].json, decision);
@@ -236,13 +240,8 @@ export class CqnceApproval implements INodeType {
 
 		let input: IDataObject = {};
 		if (body.requestId) {
-			const { CqnceClient } = await import('@cqnce/sdk');
 			const credentials = await this.getCredentials('cqnceApi');
-			const client = new CqnceClient({
-				baseUrl: String(credentials.baseUrl),
-				projectApiKey: String(credentials.projectApiKey),
-			});
-			const request = await client.getRequest(body.requestId);
+			const request = await getRequest(this, credentials, body.requestId);
 			const payload = request.payload as Record<string, unknown> | undefined;
 			input = asInputItem(payload?.input);
 		}

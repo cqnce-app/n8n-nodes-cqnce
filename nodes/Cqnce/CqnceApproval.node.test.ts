@@ -18,7 +18,10 @@ const baseParameters: Record<string, unknown> = {
 	attachments: '[]',
 };
 
-function executionContext(parameters: Record<string, unknown>): IExecuteFunctions {
+function executionContext(
+	parameters: Record<string, unknown>,
+	httpRequest: ReturnType<typeof vi.fn>,
+): IExecuteFunctions {
 	return {
 		getInputData: () => [{ json: { orderId: 'order-42', amount: 99 } }],
 		getCredentials: async () => ({
@@ -28,6 +31,8 @@ function executionContext(parameters: Record<string, unknown>): IExecuteFunction
 		getNodeParameter: (name: string) => parameters[name],
 		getWorkflow: () => ({ id: 'workflow-1', name: 'Order workflow' }),
 		getExecutionId: () => 'execution-1',
+		getExecutionCancelSignal: () => undefined,
+		helpers: { httpRequest },
 		getNode: () => ({ name: 'Approval', type: 'cqnceApproval', typeVersion: 1, position: [0, 0] }),
 	} as unknown as IExecuteFunctions;
 }
@@ -46,20 +51,13 @@ describe('cQnce Approval node', () => {
 		['APPROVED', 0, 1],
 		['REJECTED', 1, 0],
 	] as const)('routes %s to the expected output', async (status, selected, empty) => {
-		const fetchMock = vi
+		const httpRequestMock = vi
 			.fn()
-			.mockResolvedValueOnce(
-				new Response(JSON.stringify({ requestId: 'req-1' }), { status: 200 }),
-			)
-			.mockResolvedValueOnce(
-				new Response(JSON.stringify({ requestId: 'req-1', status, responses: [] }), {
-					status: 200,
-				}),
-			);
-		vi.stubGlobal('fetch', fetchMock);
+			.mockResolvedValueOnce({ requestId: 'req-1' })
+			.mockResolvedValueOnce({ requestId: 'req-1', status, responses: [] });
 
 		const result = await new CqnceApproval().execute.call(
-			executionContext({ ...baseParameters }),
+			executionContext({ ...baseParameters }, httpRequestMock),
 		);
 
 		expect(result[selected]).toHaveLength(1);
@@ -72,19 +70,16 @@ describe('cQnce Approval node', () => {
 	});
 
 	it('restores the submitted input and routes it when a callback resumes the workflow', async () => {
-		const fetchMock = vi.fn().mockResolvedValue(
-			new Response(
-				JSON.stringify({ payload: { input: { orderId: 'order-42', amount: 99 } } }),
-				{ status: 200 },
-			),
-		);
-		vi.stubGlobal('fetch', fetchMock);
+		const httpRequestMock = vi
+			.fn()
+			.mockResolvedValue({ payload: { input: { orderId: 'order-42', amount: 99 } } });
 		const context = {
 			getBodyData: () => ({ requestId: 'req-1', status: 'APPROVED', responses: [] }),
 			getCredentials: async () => ({
 				baseUrl: 'https://api.cqnce.app',
 				projectApiKey: 'project-key',
 			}),
+			helpers: { httpRequest: httpRequestMock },
 		} as unknown as IWebhookFunctions;
 
 		const result = await new CqnceApproval().webhook.call(context);

@@ -50,9 +50,6 @@
   "engines": {
     "node": ">=20.15"
   },
-  "dependencies": {
-    "@cqnce/sdk": "^0.1.2"
-  },
   "peerDependencies": {
     "n8n-workflow": "*"
   },

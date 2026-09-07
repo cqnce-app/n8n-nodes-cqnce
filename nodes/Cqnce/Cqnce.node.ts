@@ -1,4 +1,3 @@
-import type { RoutingMode, SubmitRequestInput } from '@cqnce/sdk';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -9,6 +8,13 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
+import {
+	pollUntilResolved,
+	type RoutingMode,
+	submitRequest,
+	type SubmitRequestInput,
+} from './transport.js';
 
 import {
 	type CqnceCallbackBody,
@@ -198,14 +204,8 @@ export class Cqnce implements INodeType {
 		}
 
 		try {
-			// n8n community nodes are loaded as CommonJS. The cQnce SDK is ESM, so a native
-			// dynamic import keeps both module systems compatible without bundling the SDK.
-			const { CqnceClient } = await import('@cqnce/sdk');
 			const credentials = await this.getCredentials('cqnceApi');
-			const client = new CqnceClient({
-				baseUrl: String(credentials.baseUrl),
-				projectApiKey: String(credentials.projectApiKey),
-			});
+			const abortSignal = this.getExecutionCancelSignal();
 
 			const message = this.getNodeParameter('message', 0) as string;
 			const action = this.getNodeParameter('action', 0) as string;
@@ -251,16 +251,17 @@ export class Cqnce implements INodeType {
 				request.callbackMaxRetries = this.getNodeParameter('callbackMaxRetries', 0) as number;
 			}
 
-			const requestId = await client.submitRequestAndGetId(request);
+			const requestId = await submitRequest(this, credentials, request, abortSignal);
 
 			if (deliveryMode === 'polling') {
 				const intervalMs =
 					(this.getNodeParameter('pollingIntervalSeconds', 0) as number) * 1_000;
 				const timeoutMs =
 					(this.getNodeParameter('pollingTimeoutMinutes', 0) as number) * 60_000;
-				const finalResult = await client.pollUntilResolved(requestId, () => {}, {
+				const finalResult = await pollUntilResolved(this, credentials, requestId, {
 					intervalMs,
 					timeoutMs,
+					abortSignal,
 				});
 				const callbackBody = { requestId, ...finalResult } as CqnceCallbackBody;
 
