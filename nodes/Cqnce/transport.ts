@@ -4,6 +4,7 @@ import type {
 	IHttpRequestMethods,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import { NodeOperationError, sleepWithAbort } from 'n8n-workflow';
 
 import { normalizeStatus, TERMINAL_STATUSES } from './utils.js';
 
@@ -19,7 +20,9 @@ export interface SubmitRequestInput {
 	attachments?: Array<Record<string, unknown>>;
 }
 
-type RequestContext = Pick<IExecuteFunctions, 'helpers'> | Pick<IWebhookFunctions, 'helpers'>;
+type RequestContext =
+	| Pick<IExecuteFunctions, 'getNode' | 'helpers'>
+	| Pick<IWebhookFunctions, 'getNode' | 'helpers'>;
 
 function getBaseUrl(credentials: ICredentialDataDecryptedObject): string {
 	return String(credentials.baseUrl).replace(/\/+$/, '');
@@ -46,7 +49,7 @@ async function requestJson(
 	});
 
 	if (typeof response !== 'object' || response === null || Array.isArray(response)) {
-		throw new Error('Invalid JSON response from cQnce');
+		throw new NodeOperationError(context.getNode(), 'Invalid JSON response from cQnce');
 	}
 	return response as Record<string, unknown>;
 }
@@ -67,7 +70,7 @@ export async function submitRequest(
 	);
 	const requestId = response.requestId;
 	if (typeof requestId !== 'string' || requestId.trim() === '') {
-		throw new Error('Invalid cQnce response: missing requestId');
+		throw new NodeOperationError(context.getNode(), 'Invalid cQnce response: missing requestId');
 	}
 	return requestId;
 }
@@ -101,25 +104,6 @@ async function getRequestStatus(
 	);
 }
 
-function sleep(ms: number, abortSignal?: AbortSignal): Promise<void> {
-	return new Promise((resolve, reject) => {
-		if (abortSignal?.aborted) {
-			reject(new Error('cQnce polling aborted'));
-			return;
-		}
-
-		const onAbort = () => {
-			clearTimeout(timeout);
-			reject(new Error('cQnce polling aborted'));
-		};
-		const timeout = setTimeout(() => {
-			abortSignal?.removeEventListener('abort', onAbort);
-			resolve();
-		}, ms);
-		abortSignal?.addEventListener('abort', onAbort, { once: true });
-	});
-}
-
 export async function pollUntilResolved(
 	context: RequestContext,
 	credentials: ICredentialDataDecryptedObject,
@@ -131,10 +115,15 @@ export async function pollUntilResolved(
 	let errorCount = 0;
 
 	while (true) {
-		if (options.abortSignal?.aborted) throw new Error('cQnce polling aborted');
+		if (options.abortSignal?.aborted) {
+			throw new NodeOperationError(context.getNode(), 'cQnce polling aborted');
+		}
 		const remaining = deadline - Date.now();
 		if (remaining <= 0) {
-			throw new Error(`Request ${requestId} did not resolve within ${options.timeoutMs}ms`);
+			throw new NodeOperationError(
+				context.getNode(),
+				`Request ${requestId} did not resolve within ${options.timeoutMs}ms`,
+			);
 		}
 
 		try {
@@ -148,9 +137,11 @@ export async function pollUntilResolved(
 			if (TERMINAL_STATUSES.has(normalizeStatus(response.status))) return response;
 		} catch (error) {
 			errorCount++;
-			if (errorCount >= maxErrors || options.abortSignal?.aborted) throw error;
+			if (errorCount >= maxErrors || options.abortSignal?.aborted) {
+				throw new NodeOperationError(context.getNode(), error as Error);
+			}
 		}
 
-		await sleep(Math.min(options.intervalMs, remaining), options.abortSignal);
+		await sleepWithAbort(Math.min(options.intervalMs, remaining), options.abortSignal);
 	}
 }

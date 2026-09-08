@@ -1,3 +1,4 @@
+/* eslint-disable @n8n/community-nodes/webhook-lifecycle-complete -- cQnce receives a signed, per-request n8n resume URL; there is no persistent third-party webhook to register or delete. */
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -220,9 +221,17 @@ export class Cqnce implements INodeType {
 			const additionalPayload = parseObject(
 				this.getNodeParameter('additionalPayload', 0),
 				'Additional Payload',
+				this.getNode(),
 			);
-			const customMetadata = parseObject(this.getNodeParameter('metadata', 0), 'Metadata');
-			const attachments = parseAttachments(this.getNodeParameter('attachments', 0));
+			const customMetadata = parseObject(
+				this.getNodeParameter('metadata', 0),
+				'Metadata',
+				this.getNode(),
+			);
+			const attachments = parseAttachments(
+				this.getNodeParameter('attachments', 0),
+				this.getNode(),
+			);
 			const workflow = this.getWorkflow();
 			const input = items[0].json.toolParameters ?? items[0].json;
 
@@ -305,7 +314,7 @@ export class Cqnce implements INodeType {
 		}
 
 		return {
-			workflowData: [[{ json: toHitlResponse(body) }]],
+			workflowData: [[{ json: toHitlResponse(body), pairedItem: { item: 0 } }]],
 		};
 	}
 }

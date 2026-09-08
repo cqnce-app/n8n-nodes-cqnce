@@ -1,18 +1,27 @@
+import type { INode } from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 
 import { getLatestReason, parseAttachments, parseObject, toHitlResponse } from './utils.js';
 
+const node = {
+	name: 'cQnce',
+	type: '@cqnce/n8n-nodes-cqnce.cqnce',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+} as INode;
+
 describe('cQnce node utilities', () => {
 	it('parses JSON objects', () => {
-		expect(parseObject('{"ticket":"OPS-42"}', 'Metadata')).toEqual({ ticket: 'OPS-42' });
+		expect(parseObject('{"ticket":"OPS-42"}', 'Metadata', node)).toEqual({ ticket: 'OPS-42' });
 	});
 
 	it('rejects non-object JSON', () => {
-		expect(() => parseObject('[]', 'Metadata')).toThrow('Metadata must be a JSON object');
+		expect(() => parseObject('[]', 'Metadata', node)).toThrow('Metadata must be a JSON object');
 	});
 
 	it('parses attachments', () => {
-		expect(parseAttachments('[{"name":"evidence.txt"}]')).toEqual([
+		expect(parseAttachments('[{"name":"evidence.txt"}]', node)).toEqual([
 			{ name: 'evidence.txt' },
 		]);
 	});

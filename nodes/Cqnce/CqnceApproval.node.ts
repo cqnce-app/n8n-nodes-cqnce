@@ -1,3 +1,4 @@
+/* eslint-disable @n8n/community-nodes/webhook-lifecycle-complete -- cQnce receives a signed, per-request n8n resume URL; there is no persistent third-party webhook to register or delete. */
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -36,7 +37,10 @@ function asInputItem(value: unknown): IDataObject {
 }
 
 function routeDecision(input: IDataObject, decision: IDataObject): INodeExecutionData[][] {
-	const item: INodeExecutionData = { json: { ...input, cqnce: decision } };
+	const item: INodeExecutionData = {
+		json: { ...input, cqnce: decision },
+		pairedItem: { item: 0 },
+	};
 	return decision.approved === true ? [[item], []] : [[], [item]];
 }
 
@@ -50,6 +54,7 @@ export class CqnceApproval implements INodeType {
 		},
 		group: ['transform'],
 		version: 1,
+		subtitle: '={{$parameter["deliveryMode"]}}',
 		description: 'Wait for a cQnce decision and route the item to Approved or Rejected',
 		usableAsTool: true,
 		defaults: { name: 'cQnce Approval' },
@@ -190,7 +195,11 @@ export class CqnceApproval implements INodeType {
 			const workflow = this.getWorkflow();
 			const request: SubmitRequestInput = {
 				payload: {
-					...parseObject(this.getNodeParameter('additionalPayload', 0), 'Additional Payload'),
+					...parseObject(
+						this.getNodeParameter('additionalPayload', 0),
+						'Additional Payload',
+						this.getNode(),
+					),
 					action: this.getNodeParameter('action', 0) as string,
 					target: this.getNodeParameter('target', 0) as string,
 					reason: this.getNodeParameter('message', 0) as string,
@@ -198,7 +207,11 @@ export class CqnceApproval implements INodeType {
 					input: items[0].json,
 				},
 				metadata: {
-					...parseObject(this.getNodeParameter('metadata', 0), 'Metadata'),
+					...parseObject(
+						this.getNodeParameter('metadata', 0),
+						'Metadata',
+						this.getNode(),
+					),
 					integration: 'n8n',
 					nodeType: 'approval',
 					workflowId: workflow.id,
@@ -209,7 +222,10 @@ export class CqnceApproval implements INodeType {
 			};
 			if (routingMode) request.routingMode = routingMode;
 			if (routingRuleId) request.routingRuleId = routingRuleId;
-			const attachments = parseAttachments(this.getNodeParameter('attachments', 0));
+			const attachments = parseAttachments(
+				this.getNodeParameter('attachments', 0),
+				this.getNode(),
+			);
 			if (attachments.length > 0) request.attachments = attachments;
 			if (deliveryMode === 'callback') {
 				request.callbackUrl = this.getSignedResumeUrl();
@@ -219,7 +235,15 @@ export class CqnceApproval implements INodeType {
 			const requestId = await submitRequest(this, credentials, request, abortSignal);
 			if (deliveryMode === 'callback') {
 				await this.putExecutionToWait(WAIT_INDEFINITELY);
-				return [[{ json: { ...items[0].json, cqnce: { requestId, status: 'PENDING' } } }], []];
+				return [
+					[
+						{
+							json: { ...items[0].json, cqnce: { requestId, status: 'PENDING' } },
+							pairedItem: { item: 0 },
+						},
+					],
+					[],
+				];
 			}
 
 			const finalResult = await pollUntilResolved(this, credentials, requestId, {

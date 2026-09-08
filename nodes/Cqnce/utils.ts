@@ -1,4 +1,5 @@
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, INode } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export const TERMINAL_STATUSES = new Set(['APPROVED', 'REJECTED', 'EXPIRED', 'CANCELLED']);
 
@@ -10,7 +11,11 @@ export interface CqnceCallbackBody extends IDataObject {
 	timestamp?: string;
 }
 
-export function parseObject(value: unknown, fieldName: string): Record<string, unknown> {
+export function parseObject(
+	value: unknown,
+	fieldName: string,
+	node: INode,
+): Record<string, unknown> {
 	if (value === undefined || value === null || value === '') return {};
 
 	let parsed = value;
@@ -18,18 +23,18 @@ export function parseObject(value: unknown, fieldName: string): Record<string, u
 		try {
 			parsed = JSON.parse(value);
 		} catch {
-			throw new Error(`${fieldName} must contain valid JSON`);
+			throw new NodeOperationError(node, `${fieldName} must contain valid JSON`);
 		}
 	}
 
 	if (typeof parsed !== 'object' || Array.isArray(parsed)) {
-		throw new Error(`${fieldName} must be a JSON object`);
+		throw new NodeOperationError(node, `${fieldName} must be a JSON object`);
 	}
 
 	return parsed as Record<string, unknown>;
 }
 
-export function parseAttachments(value: unknown): Array<Record<string, unknown>> {
+export function parseAttachments(value: unknown, node: INode): Array<Record<string, unknown>> {
 	if (value === undefined || value === null || value === '') return [];
 
 	let parsed = value;
@@ -37,12 +42,12 @@ export function parseAttachments(value: unknown): Array<Record<string, unknown>>
 		try {
 			parsed = JSON.parse(value);
 		} catch {
-			throw new Error('Attachments must contain valid JSON');
+			throw new NodeOperationError(node, 'Attachments must contain valid JSON');
 		}
 	}
 
 	if (!Array.isArray(parsed) || parsed.some((entry) => typeof entry !== 'object' || entry === null)) {
-		throw new Error('Attachments must be a JSON array of objects');
+		throw new NodeOperationError(node, 'Attachments must be a JSON array of objects');
 	}
 
 	return parsed as Array<Record<string, unknown>>;

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1 - 2026-09-08
+
+- Align local linting with the current n8n community-package scanner.
+- Add the package author email required for verification.
+- Preserve paired-item metadata across approval outputs.
+- Use n8n-native operation errors and abortable polling sleep.
+- Document why signed per-request resume webhooks have no external lifecycle to manage.
+
 ## 0.1.0 - 2026-09-04
 
 - Publish the package under the `@cqnce/n8n-nodes-cqnce` npm scope.
