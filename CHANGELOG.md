@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3 - 2026-09-08
+
+- Restore polling compatibility with n8n versions that do not export `sleepWithAbort`.
+- Keep polling responsive to execution cancellation by racing the portable `sleep` helper with the abort signal.
+
 ## 0.1.2 - 2026-09-08
 
 - Declare the complete n8n webhook lifecycle for signed per-request resume URLs.

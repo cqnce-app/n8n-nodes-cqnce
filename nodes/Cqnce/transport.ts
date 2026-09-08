@@ -4,7 +4,7 @@ import type {
 	IHttpRequestMethods,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, sleepWithAbort } from 'n8n-workflow';
+import { NodeOperationError, sleep } from 'n8n-workflow';
 
 import { normalizeStatus, TERMINAL_STATUSES } from './utils.js';
 
@@ -142,6 +142,24 @@ export async function pollUntilResolved(
 			}
 		}
 
-		await sleepWithAbort(Math.min(options.intervalMs, remaining), options.abortSignal);
+		const delayMs = Math.min(options.intervalMs, remaining);
+		if (options.abortSignal === undefined) {
+			await sleep(delayMs);
+			continue;
+		}
+
+		const abortSignal = options.abortSignal;
+		let onAbort: (() => void) | undefined;
+		const aborted = new Promise<void>((resolve) => {
+			onAbort = () => resolve();
+			abortSignal.addEventListener('abort', onAbort, { once: true });
+		});
+		try {
+			await Promise.race([sleep(delayMs), aborted]);
+		} finally {
+			if (onAbort !== undefined) {
+				abortSignal.removeEventListener('abort', onAbort);
+			}
+		}
 	}
 }
