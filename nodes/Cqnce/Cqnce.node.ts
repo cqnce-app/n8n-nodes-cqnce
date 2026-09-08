@@ -1,7 +1,7 @@
-/* eslint-disable @n8n/community-nodes/webhook-lifecycle-complete -- cQnce receives a signed, per-request n8n resume URL; there is no persistent third-party webhook to register or delete. */
 import type {
 	IExecuteFunctions,
 	IDataObject,
+	IHookFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -196,6 +196,22 @@ export class Cqnce implements INodeType {
 				description: 'Optional cQnce attachments as a JSON array of attachment objects',
 			},
 		],
+	};
+
+	// cQnce receives an n8n-signed resume URL per request. There is no persistent
+	// third-party webhook registration to create, inspect, or remove.
+	webhookMethods = {
+		default: {
+			async checkExists(this: IHookFunctions): Promise<boolean> {
+				return true;
+			},
+			async create(this: IHookFunctions): Promise<boolean> {
+				return true;
+			},
+			async delete(this: IHookFunctions): Promise<boolean> {
+				return true;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

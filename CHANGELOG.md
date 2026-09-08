@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 - 2026-09-08
+
+- Declare the complete n8n webhook lifecycle for signed per-request resume URLs.
+
 ## 0.1.1 - 2026-09-08
 
 - Align local linting with the current n8n community-package scanner.
